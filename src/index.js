@@ -29,16 +29,16 @@ export default (apiUrl, httpClient = fetchUtils.fetchJson) => {
   };
 
   const convertDataRequestToHTTP = (type, resource, params) => {
-    let url = '';
+    let url = "";
     const options = {};
+
     switch (type) {
       case GET_LIST: {
         const { page, perPage } = params.pagination;
 
-        const query = RequestQueryBuilder
-          .create({
-            filter: composeFilter(params.filter),
-          })
+        const query = RequestQueryBuilder.create({
+          filter: composeFilter(params.filter)
+        })
           .setLimit(perPage)
           .setPage(page)
           .sortBy(params.sort)
@@ -55,13 +55,14 @@ export default (apiUrl, httpClient = fetchUtils.fetchJson) => {
         break;
       }
       case GET_MANY: {
-        const query = RequestQueryBuilder
-          .create()
+        const query = RequestQueryBuilder.create()
           .setFilter({
-            field: 'id',
+            field: "id",
             operator: CondOperator.IN,
-            value: `${params.ids}`,
+            value: `${params.ids}`
           })
+          .setLimit(params.ids.length)
+          .setOffset(0)
           .query();
 
         url = `${apiUrl}/${resource}?${query}`;
@@ -75,13 +76,12 @@ export default (apiUrl, httpClient = fetchUtils.fetchJson) => {
         filter.push({
           field: params.target,
           operator: CondOperator.EQUALS,
-          value: params.id,
+          value: params.id
         });
 
-        const query = RequestQueryBuilder
-          .create({
-            filter,
-          })
+        const query = RequestQueryBuilder.create({
+          filter
+        })
           .sortBy(params.sort)
           .setLimit(perPage)
           .setOffset((page - 1) * perPage)
@@ -93,19 +93,19 @@ export default (apiUrl, httpClient = fetchUtils.fetchJson) => {
       }
       case UPDATE: {
         url = `${apiUrl}/${resource}/${params.id}`;
-        options.method = 'PATCH';
+        options.method = "PUT";
         options.body = JSON.stringify(params.data);
         break;
       }
       case CREATE: {
         url = `${apiUrl}/${resource}`;
-        options.method = 'POST';
+        options.method = "POST";
         options.body = JSON.stringify(params.data);
         break;
       }
       case DELETE: {
         url = `${apiUrl}/${resource}/${params.id}`;
-        options.method = 'DELETE';
+        options.method = "DELETE";
         break;
       }
       default:
@@ -116,12 +116,14 @@ export default (apiUrl, httpClient = fetchUtils.fetchJson) => {
 
   const convertHTTPResponse = (response, type, resource, params) => {
     const { headers, json } = response;
+
     switch (type) {
       case GET_LIST:
       case GET_MANY_REFERENCE:
+      case GET_MANY:
         return {
           data: json.data,
-          total: json.total,
+          total: json.total
         };
       case CREATE:
         return { data: { ...params.data, id: json.id } };
@@ -133,32 +135,32 @@ export default (apiUrl, httpClient = fetchUtils.fetchJson) => {
   return (type, resource, params) => {
     if (type === UPDATE_MANY) {
       return Promise.all(
-        params.ids.map(id => httpClient(`${apiUrl}/${resource}/${id}`, {
-          method: 'PUT',
-          body: JSON.stringify(params.data),
-        })),
-      )
-        .then(responses => ({
-          data: responses.map(response => response.json),
-        }));
+        params.ids.map(id =>
+          httpClient(`${apiUrl}/${resource}/${id}`, {
+            method: "PUT",
+            body: JSON.stringify(params.data)
+          })
+        )
+      ).then(responses => ({
+        data: responses.map(response => response.json)
+      }));
     }
     if (type === DELETE_MANY) {
       return Promise.all(
-        params.ids.map(id => httpClient(`${apiUrl}/${resource}/${id}`, {
-          method: 'DELETE',
-        })),
+        params.ids.map(id =>
+          httpClient(`${apiUrl}/${resource}/${id}`, {
+            method: "DELETE"
+          })
+        )
       ).then(responses => ({
-        data: responses.map(response => response.json),
+        data: responses.map(response => response.json)
       }));
     }
 
-    const { url, options } = convertDataRequestToHTTP(
-      type,
-      resource,
-      params,
-    );
-    return httpClient(url, options).then(
-      response => convertHTTPResponse(response, type, resource, params),
+    const { url, options } = convertDataRequestToHTTP(type, resource, params);
+    return httpClient(url, options).then(response =>
+      convertHTTPResponse(response, type, resource, params)
     );
   };
 };
+
